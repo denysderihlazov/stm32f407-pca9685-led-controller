@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "pca9685.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -94,7 +94,17 @@ int main(void)
   MX_I2C1_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
+  HAL_Delay(100);
 
+  if (PCA9685_Init(&hi2c1) != HAL_OK)
+  {
+      Error_Handler();
+  }
+
+  PCA9685_SetDuty(0, 25);
+  PCA9685_SetDuty(1, 50);
+  PCA9685_SetDuty(2, 75);
+  PCA9685_SetDuty(3, 100);
   /* USER CODE END 2 */
 
   /* Infinite loop */
