@@ -22,6 +22,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "pca9685.h"
+#include <string.h>
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -45,7 +47,10 @@ I2C_HandleTypeDef hi2c1;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
-
+uint8_t rx_byte = 0;
+volatile uint8_t uart_cmd_ready = 0;
+volatile uint8_t uart_cmd = 0;
+uint8_t pwm_freq_state = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -59,7 +64,146 @@ static void MX_USART3_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+static void UART_Print(const char *msg)
+{
+    HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+}
 
+static void Print_Help(void)
+{
+    UART_Print("\r\nCommands:\r\n");
+    UART_Print("h - help\r\n");
+    UART_Print("o - enable PCA9685 outputs\r\n");
+    UART_Print("x - disable PCA9685 outputs\r\n");
+    UART_Print("t - test 4 channels: 25%, 50%, 75%, 100%\r\n");
+    UART_Print("a - all channels off\r\n");
+    UART_Print("b - all channels on\r\n");
+    UART_Print("s - sleep mode\r\n");
+    UART_Print("w - wakeup\r\n");
+    UART_Print("d - fade demo on channel 0\r\n");
+    UART_Print("f - set PWM frequency test: 50 Hz / 100 Hz / 200 Hz\r\n");
+}
+
+static void Test4_Channels(void)
+{
+    PCA9685_SetDuty(0, 25);
+    PCA9685_SetDuty(1, 50);
+    PCA9685_SetDuty(2, 75);
+    PCA9685_SetDuty(3, 100);
+
+    UART_Print("Test4: CH0=25%, CH1=50%, CH2=75%, CH3=100%\r\n");
+}
+
+static void Test_PWM_Frequency(void)
+{
+    if (pwm_freq_state == 0)
+    {
+        PCA9685_SetPWMFreq(50);
+        UART_Print("PWM frequency set to 50 Hz\r\n");
+        pwm_freq_state = 1;
+    }
+    else if (pwm_freq_state == 1)
+    {
+        PCA9685_SetPWMFreq(100);
+        UART_Print("PWM frequency set to 100 Hz\r\n");
+        pwm_freq_state = 2;
+    }
+    else
+    {
+        PCA9685_SetPWMFreq(200);
+        UART_Print("PWM frequency set to 200 Hz\r\n");
+        pwm_freq_state = 0;
+    }
+}
+
+static void Demo_Fade_CH0(void)
+{
+    UART_Print("Fade demo on CH0 started\r\n");
+
+    for (uint8_t duty = 0; duty <= 100; duty += 5)
+    {
+        PCA9685_SetDuty(0, duty);
+        HAL_Delay(40);
+    }
+
+    for (int duty = 100; duty >= 0; duty -= 5)
+    {
+        PCA9685_SetDuty(0, duty);
+        HAL_Delay(40);
+    }
+
+    UART_Print("Fade demo on CH0 finished\r\n");
+}
+
+static void Process_UART_Command(uint8_t cmd)
+{
+	if (cmd == '\r' || cmd == '\n')
+	{
+	    return;
+	}
+    switch (cmd)
+    {
+        case 'h':
+        case 'H':
+            Print_Help();
+            break;
+
+        case 'o':
+        case 'O':
+            PCA9685_EnableOutputs();
+            UART_Print("Outputs enabled\r\n");
+            break;
+
+        case 'x':
+        case 'X':
+            PCA9685_DisableOutputs();
+            UART_Print("Outputs disabled\r\n");
+            break;
+
+        case 't':
+        case 'T':
+            Test4_Channels();
+            break;
+
+        case 'f':
+        case 'F':
+            Test_PWM_Frequency();
+            break;
+
+        case 'a':
+        case 'A':
+            PCA9685_AllOff();
+            UART_Print("All channels off\r\n");
+            break;
+
+        case 'b':
+        case 'B':
+            PCA9685_AllOn();
+            UART_Print("All channels on\r\n");
+            break;
+
+        case 's':
+        case 'S':
+            PCA9685_Sleep();
+            UART_Print("Sleep mode enabled\r\n");
+            break;
+
+        case 'w':
+        case 'W':
+            PCA9685_Wakeup();
+            UART_Print("Wakeup done\r\n");
+            break;
+
+        case 'd':
+        case 'D':
+            Demo_Fade_CH0();
+            break;
+
+        default:
+            UART_Print("Unknown command. Press h for help.\r\n");
+            break;
+    }
+}
 /* USER CODE END 0 */
 
 /**
@@ -96,15 +240,19 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_Delay(100);
 
+  UART_Print("\r\nSTM32F407 PCA9685 LED Controller\r\n");
+
   if (PCA9685_Init(&hi2c1) != HAL_OK)
   {
+      UART_Print("PCA9685 init ERROR\r\n");
       Error_Handler();
   }
 
-  PCA9685_SetDuty(0, 25);
-  PCA9685_SetDuty(1, 50);
-  PCA9685_SetDuty(2, 75);
-  PCA9685_SetDuty(3, 100);
+  UART_Print("PCA9685 init OK\r\n");
+
+  Print_Help();
+
+  HAL_UART_Receive_IT(&huart3, &rx_byte, 1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -114,6 +262,11 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+      if (uart_cmd_ready)
+      {
+	      uart_cmd_ready = 0;
+	      Process_UART_Command(uart_cmd);
+      }
   }
   /* USER CODE END 3 */
 }
@@ -258,6 +411,16 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == USART3)
+    {
+        uart_cmd = rx_byte;
+        uart_cmd_ready = 1;
+
+        HAL_UART_Receive_IT(&huart3, &rx_byte, 1);
+    }
+}
 /* USER CODE END 4 */
 
 /**
