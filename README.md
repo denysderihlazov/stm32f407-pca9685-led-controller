@@ -206,6 +206,43 @@ Remaining:
 * add screenshots
 * add video link
 
-## Demo Video
+## Demo Videos
 
-Video link will be added after recording the final demonstration.
+### I2C Communication Verification
+
+Video link:
+
+[STM32F407 PCA9685 LED Controller via I2C](https://youtu.be/0U33TPNM2v8)
+
+This video demonstrates:
+
+* STM32F407 communication with the PCA9685 over I2C1
+* PCA9685 initialization
+* UART console control through RealTerm
+* Logic analyzer verification of I2C frames
+* PCA9685 address `0x40`
+* I2C SCL frequency around `50 kHz`
+
+### PCA9685 Output Verification
+
+Video link:
+
+[STM32F407 PCA9685 PWM Output Verification with Kingst LA2016](https://youtu.be/opkb-P3YmcQ)
+
+This video demonstrates:
+
+* UART commands used to control the PCA9685
+* `w` command for wakeup
+* `o` command for output enable
+* `t` command for setting test PWM values
+* Attempt to verify PCA9685 output signals using Kingst LA2016
+* Physical probing of PCA9685 output path according to the shield schematic
+
+The first four PCA9685 output channels are routed according to the schematic as:
+
+| PCA9685 Channel | Series Resistor | Connector Output |
+| --------------- | --------------- | ---------------- |
+| LED0            | R42             | P2 pin 1         |
+| LED1            | R43             | P2 pin 2         |
+| LED2            | R44             | P2 pin 3         |
+| LED3            | R45             | P2 pin 4         |

@@ -203,8 +203,8 @@ HAL_StatusTypeDef PCA9685_Init(I2C_HandleTypeDef *hi2c)
     if (HAL_I2C_IsDeviceReady(pca_i2c, PCA9685_I2C_ADDR, 3, 100) != HAL_OK)
         return HAL_ERROR;
 
-    // MODE1 = normal mode, auto-increment disabled for now
-    if (PCA9685_WriteReg(PCA9685_MODE1, 0x00) != HAL_OK)
+    // MODE1 = normal mode, auto-increment enabled
+    if (PCA9685_WriteReg(PCA9685_MODE1, 0x20) != HAL_OK)
         return HAL_ERROR;
 
     // MODE2 = totem pole output
